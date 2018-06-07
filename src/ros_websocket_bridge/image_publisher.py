@@ -74,7 +74,7 @@ class WebSocketClient():
 
         res = self.stairs_service(image_message)
 
-        print res.width,res.height
+        print "Received image width: {} height: {}".format(res.width,res.height)
 
 
     def read_and_send_image(self,filepath):

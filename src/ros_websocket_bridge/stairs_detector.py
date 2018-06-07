@@ -66,44 +66,45 @@ class StairsClient():
 
     # Take in base64 string and return cv image
     def stringToRGB(self,base64_string):
-        dataArray = np.frombuffer(base64.decodestring(base64_string), np.float32)
-        #print dataArray.shape
-        #imgdata = base64.b64decode(str(base64_string))
-        #im = np.fromstring(base64_string)#.astype(np.float16)
-        im = dataArray.reshape(544,960)
-        #print im.shape
-        #print np.where(im > 0.5)
-        image = Im.fromarray(im)
-        filename = "deneme"
-        filename +=".tiff"
-        print(filename)
 
-        image.save(filename)
-        #image =Im.open(io.BytesIO(imgdata))
-        return dataArray#cv2.cvtColor(np.array(image), cv2.COLOR_BGR2RGB)
+        dataArray = np.frombuffer(base64.decodestring(base64_string), np.float32)
+
+        #im = dataArray.reshape(544,960)
+
+        #image = Im.fromarray(im)
+        #filename = "deneme"
+        #filename +=".tiff"
+        #print(filename)
+
+        #image.save(filename)
+        return dataArray
 
 
 
     def handle_detect_stairs_request(self,req):
-
         data = dict()
+
+
         try:
             cv_image = self.bridge.imgmsg_to_cv2(req.image, "bgr8")
+
         except CvBridgeError as e:
             print(e)
-            return
+            return DetectStairsResponse([],0,0)
 
         ret, buffer_img = cv2.imencode('.jpg', cv_image)
-
-        #img = base64.b64encode(req.image.data)
 
         data['img'] = base64.b64encode(buffer_img)
 
         if not self.send_data(json.dumps(data)):
             return DetectStairsResponse([],0,0)
+
+
         incoming_data=b''
+        fail_count = 0
 
         while 1:
+
             try:
                 incoming_data += self.listen()
                 jsonresp = json.loads(incoming_data)
@@ -112,15 +113,15 @@ class StairsClient():
                 image_sizes = jsonresp[2].split(",")
                 height= int(image_sizes[0][1:])
                 width= int(image_sizes[1][:-1])
+                rospy.loginfo("Data parsed")
                 return DetectStairsResponse(data_array,height,width)
-            #image_size = jsonresp[2]
-            #print type(image_size)
 
-
-                #print img
             except Exception as ex:
-                print ex
+                #print ex
                 print "keep trying"
+                fail_count += 1
+                if fail_count == 1000:
+                    break
 
         return DetectStairsResponse([],0,0)
 
@@ -128,7 +129,7 @@ class StairsClient():
 if __name__ == '__main__':
 
 
-    rospy.init_node('stairs_detector_bridge')
+    rospy.init_node('ros_websocket_stairs_detector_bridge')
 
     argparse = argparse.ArgumentParser(prog='stairs_detector.py');
     argparse.add_argument("--host", type=str, help='Host address',default="localhost")
@@ -141,6 +142,7 @@ if __name__ == '__main__':
 
     print args.host
     print args.port
+
     stairsclient = StairsClient(host=args.host, port=args.port)
 
     #rospy.Subscriber(args.camera_topic, Image, detectronclient.image_callback)
@@ -156,19 +158,3 @@ if __name__ == '__main__':
     rospy.spin()
 
     stairsclient.socket.close()
-    #while not rospy.is_shutdown():
-
-
-
-            #print len(data.split(","))
-
-            #enerothclient.parsedata(data)
-
-    #while not rospy.is_shutdown():
-        #data = detectronclient.listen()
-        #if len(data) > 0 :
-        #    enerothclient.parsedata(data)
-
-
-
-    #detectronclient.close()
